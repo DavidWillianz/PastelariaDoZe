@@ -2,7 +2,7 @@
 from fastapi import APIRouter
 from domain.entities.Cliente import Cliente
 router = APIRouter()
-# Criar as rotas/endpoints: GET, POST, PUT, DELETE
+
 @router.get("/cliente/", tags=["Cliente"])
 async def get_cliente():
     return {"msg": "get todos executado"}, 200
