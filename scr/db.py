@@ -8,4 +8,4 @@ Session = sessionmaker(bind=engine, autocommit=False, autoflush=True)
 Base = declarative_base()
 # cria, caso não existam, as tabelas de todos os modelos que encontrar na aplicação (importados)
 async def criaTabelas():
-    Base.metadata.create_all(engine)    
+    Base.metadata.create_all(engine)
