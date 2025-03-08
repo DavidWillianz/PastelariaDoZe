@@ -12,11 +12,11 @@ class FuncionarioDB(db.Base):
     grupo = Column(Integer, nullable=False)
     senha = Column(VARCHAR(200), nullable=False)
 
-def __init__(self, id_funcionario, nome, matricula, cpf, telefone, grupo, senha):
-    self.id_funcionario = id_funcionario
-    self.nome = nome
-    self.matricula = matricula
-    self.cpf = cpf
-    self.telefone = telefone
-    self.grupo = grupo
-    self.senha = senha
+    def __init__(self, id_funcionario, nome, matricula, cpf, telefone, grupo, senha):
+        self.id_funcionario = id_funcionario
+        self.nome = nome
+        self.matricula = matricula
+        self.cpf = cpf
+        self.telefone = telefone
+        self.grupo = grupo
+        self.senha = senha
