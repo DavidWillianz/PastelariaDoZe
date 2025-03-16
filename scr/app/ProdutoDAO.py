@@ -3,16 +3,20 @@ from fastapi import APIRouter
 from domain.entities.Produto import Produto
 import db
 from infra.orm.ProdutoModel import ProdutoDB
+# import da segurança
+from typing import Annotated
+from fastapi import Depends
+from security import get_current_active_user, User
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)] )
 # Criar as rotas/endpoints: GET, POST, PUT, DELETE
 
-@router.get("/produto/", tags=["Produto"])
-async def get_produto():
-
+#router = APIRouter()
+# dependências de forma global
+@router.get("/produto/", tags=["Produto"], dependencies=[Depends(get_current_active_user)], )
+async def get_produto(current_user: Annotated[User, Depends(get_current_active_user)], ):
     try:
         session = db.Session()
-        
         #busca todos
         dados = session.query(ProdutoDB).all()
         
@@ -24,7 +28,7 @@ async def get_produto():
         session.close()
 
 @router.get("/produto/{id}", tags=["Produto"])
-async def get_produto(id: int):
+async def get_produto(id: int, current_user: Annotated[User, Depends(get_current_active_user)]):
     try:
         session = db.Session()
         
@@ -39,7 +43,7 @@ async def get_produto(id: int):
         session.close()
 
 @router.post("/produto/", tags=["Produto"])
-async def post_produto(corpo: Produto):
+async def post_produto(corpo: Produto, current_user: Annotated[User, Depends(get_current_active_user)]):
     try:
         session = db.Session()
         
@@ -55,7 +59,7 @@ async def post_produto(corpo: Produto):
         session.close()
 
 @router.put("/produto/{id}", tags=["Produto"])
-async def put_produto(id: int, corpo: Produto):
+async def put_produto(id: int, corpo: Produto, current_user: Annotated[User, Depends(get_current_active_user)]):
     try:
         session = db.Session()
         
@@ -76,7 +80,7 @@ async def put_produto(id: int, corpo: Produto):
         session.close()
 
 @router.delete("/produto/{id}", tags=["Produto"])
-async def delete_produto(id: int):
+async def delete_produto(id: int, current_user: Annotated[User, Depends(get_current_active_user)]):
     try:
         session = db.Session()
         # busca os dados atuais pelo id
