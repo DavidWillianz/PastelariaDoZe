@@ -5,6 +5,7 @@ import uvicorn
 
 #import das classes com as rotas/endpoints
 import security
+from app import ComandaDAO
 from app import FuncionarioDAO
 from app import ClienteDAO
 from app import ProdutoDAO
@@ -33,6 +34,7 @@ async def root():
 
 #Mapeamento das rotas/endpoints
 app.include_router(security.router)
+app.include_router(ComandaDAO.router)
 app.include_router(FuncionarioDAO.router)
 app.include_router(ClienteDAO.router)
 app.include_router(ProdutoDAO.router)
