@@ -29,8 +29,8 @@ app = FastAPI(lifespan=lifespan)
 # rota padrão
 @app.get("/")
 async def root():
-    return {"detail":"API Comandas", "Swagger UI": "http://127.0.0.1:8000/docs", 
-"ReDoc": "http://127.0.0.1:8000/redoc" }
+    return {"detail":"API Comandas", "Swagger UI": "http://127.0.0.1:4333/docs", 
+"ReDoc": "http://127.0.0.1:4333/redoc" }
 
 #Mapeamento das rotas/endpoints
 app.include_router(security.router)
