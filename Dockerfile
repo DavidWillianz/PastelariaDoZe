@@ -33,3 +33,12 @@ CMD ["hypercorn", \
     "--certfile=/cert/cert.pem", "--keyfile=/cert/ecc-key.pem", \
     "--bind", "0.0.0.0:4443", "--quic-bind", "0.0.0.0:4443", \
     "main:app"]
+
+# 1. Construir a imagem com nome comanda-api (sem necessidade do -f se o nome for Dockerfile)
+# docker build -t comanda-api .
+
+# # 2. Criar uma tag para enviar ao Docker Hub
+# docker tag comanda-api davidwillianz/comanda-api
+
+# # 3. Enviar a imagem para seu repositório no Docker Hub
+# docker push davidwillianz/comanda-api
