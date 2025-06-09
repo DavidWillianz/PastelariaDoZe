@@ -7,5 +7,5 @@ class Funcionario(BaseModel):
     matricula: str
     cpf: str
     telefone: str = None
-    grupo: int
+    grupo: int # 1 - Administrador, 2 - Gerente, 3 - Funcionario
     senha: str = None
