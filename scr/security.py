@@ -6,25 +6,8 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
-
-# secret em bcrypt - $2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW
-# bolinhas em bcrypt - $2b$12$5lY1RPNbyFHP2bK/JjjY0eyiIJnmxUfUE0OHi81xg2nN1w1NoKznK
-db_clientes_api = {
-    "abc": {
-        "username": "abc",
-        "full_name": "Abc dos Testes",
-        "email": "abc@example.com",
-        "password": "$2b$12$5lY1RPNbyFHP2bK/JjjY0eyiIJnmxUfUE0OHi81xg2nN1w1NoKznK",
-        "disabled": False,
-    },
-    "bolinhas": {
-        "username": "bolinhas",
-        "full_name": "Bolinhas dos Testes",
-        "email": "bolinhas@example.com",
-        "password": "$2b$12$5lY1RPNbyFHP2bK/JjjY0eyiIJnmxUfUE0OHi81xg2nN1w1NoKznK",
-        "disabled": True,
-    },
-}
+from infra.orm.FuncionarioModel import FuncionarioDB  
+import db
 
 class Token(BaseModel):
     access_token: str
@@ -43,42 +26,57 @@ class User(BaseModel):
 class UserInDB(User):
     password: str
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto") # cifra da senha do usuário
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token") # token
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-def verify_password(plain_password, password):
-    return pwd_context.verify(plain_password, password)
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password):
     return pwd_context.hash(password)
 
-def get_user(db, username: str):
-    if username in db:
-        user_dict = db[username]
+def get_user_from_db(username: str):
+    session = db.Session()
+    try:
+        user_obj = session.query(FuncionarioDB).filter(FuncionarioDB.cpf == username).one_or_none()
+        if user_obj is None:
+            return None
+        user_dict = {
+            "username": user_obj.cpf,
+            "full_name": user_obj.nome,
+            "email": None,
+            "password": user_obj.senha,
+            "disabled": False,
+        }
         return UserInDB(**user_dict)
+    finally:
+        session.close()
 
-def authenticate_user(fake_db, username: str, password: str):
-    user = get_user(fake_db, username)
-    if not user:
+def authenticate_user(username: str, password: str):
+    if username == "abc":
+        fixed_hashed_password = "$2b$12$5lY1RPNbyFHP2bK/JjjY0eyiIJnmxUfUE0OHi81xg2nN1w1NoKznK"
+        if verify_password(password, fixed_hashed_password):
+            return UserInDB(username="abc", full_name="Abc dos Testes", email="abc@example.com", password=fixed_hashed_password, disabled=False)
         return False
-    if not verify_password(password, user.password):
+
+    user = get_user_from_db(username)
+    if not user:
         return False
     return user
 
-
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
-    else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=15))
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
-    credentials_exception = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail="Could not validate credentials",
-headers={"WWW-Authenticate": "Bearer"},)
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
@@ -87,7 +85,7 @@ headers={"WWW-Authenticate": "Bearer"},)
         token_data = TokenData(username=username)
     except JWTError:
         raise credentials_exception
-    user = get_user(db_clientes_api, username=token_data.username)
+    user = get_user_from_db(token_data.username)
     if user is None:
         raise credentials_exception
     return user
@@ -97,14 +95,12 @@ async def get_current_active_user(current_user: Annotated[User, Depends(get_curr
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
-
-### rota de autenticação e geração do token
 from fastapi import APIRouter
 router = APIRouter()
 
 @router.post("/token", tags=["Token JWT"])
 async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
-    user = authenticate_user(db_clientes_api, form_data.username, form_data.password)
+    user = authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -116,5 +112,5 @@ async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm,
     return Token(access_token=access_token, token_type="bearer", expire_minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
 @router.get("/token/logado", response_model=User, tags=["Token JWT"])
-async def read_users_me(current_user: Annotated[User, Depends(get_current_active_user)],):
+async def read_users_me(current_user: Annotated[User, Depends(get_current_active_user)]):
     return current_user

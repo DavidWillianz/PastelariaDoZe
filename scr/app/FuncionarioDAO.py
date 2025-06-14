@@ -1,28 +1,22 @@
 # David Willian
-# import da persistência
 from fastapi import APIRouter
 from domain.entities.Funcionario import Funcionario
 import db
 from infra.orm.FuncionarioModel import FuncionarioDB
 
-# import da segurança
 from typing import Annotated
 from fastapi import Depends
 from security import get_current_active_user, User
+from security import verify_password
 
 router = APIRouter(dependencies=[Depends(get_current_active_user)])
-# Criar as rotas/endpoints: GET, POST, PUT, DELETE
 
-#router = APIRouter()
-# dependências de forma global
 @router.get("/funcionario/", tags=["Funcionário"], dependencies=[Depends(get_current_active_user)], )
 async def get_funcionario(current_user:Annotated[User, Depends(get_current_active_user)]):
     try:
         session = db.Session()
-        #busca todos
         dados = session.query(FuncionarioDB).all()
         return dados, 200
-
     except Exception as e:
         return {"Erro":str(e)}, 400
     finally:
@@ -35,7 +29,6 @@ async def get_funcionario(id: int, current_user: Annotated[User, Depends(get_cur
         dados = session.query(FuncionarioDB).filter(FuncionarioDB.id_funcionario == id).all()
         
         return dados, 200
-    
     except Exception as e:
         return {"erro": str(e)}, 400
     finally:
@@ -48,7 +41,6 @@ async def post_funcionario(corpo: Funcionario, current_user: Annotated[User, Dep
         
         dados = FuncionarioDB(None, corpo.nome, corpo.matricula, corpo.cpf, corpo.telefone, corpo.grupo, corpo.senha)
         session.add(dados)
-        #sesson.flush()
         session.commit()
         return {"id": dados.id_funcionario}, 200
     except Exception as e:
@@ -61,9 +53,8 @@ async def post_funcionario(corpo: Funcionario, current_user: Annotated[User, Dep
 async def put_funcionario(id: int, corpo: Funcionario, current_user: Annotated[User, Depends(get_current_active_user)]):
     try:
         session = db.Session()
-        # busca os dados atuais pelo id
         dados = session.query(FuncionarioDB).filter(FuncionarioDB.id_funcionario == id).one()
-        # atualiza os dados com base no corpo da requisição
+
         dados.nome = corpo.nome
         dados.cpf = corpo.cpf
         dados.telefone = corpo.telefone
@@ -83,7 +74,7 @@ async def put_funcionario(id: int, corpo: Funcionario, current_user: Annotated[U
 async def delete_funcionario(id: int, current_user: Annotated[User, Depends(get_current_active_user)]):
     try:
         session = db.Session()
-        # busca os dados atuais pelo id
+
         dados = session.query(FuncionarioDB).filter(FuncionarioDB.id_funcionario == id).one()
         session.delete(dados)
         session.commit()
@@ -93,27 +84,36 @@ async def delete_funcionario(id: int, current_user: Annotated[User, Depends(get_
         return {"erro": str(e)}, 400
     finally:
         session.close()
-        
-# valida o cpf e senha informado pelo usuário
+ 
 @router.post("/funcionario/login/", tags=["Funcionário - Login"])
-async def login_funcionario(corpo: Funcionario, current_user: Annotated[User, Depends(get_current_active_user)]):
+async def login_funcionario(corpo: Funcionario):
     try:
         session = db.Session()
-        # one(), requer que haja apenas um resultado no conjunto de resultados
-        # é um erro se o banco de dados retornar 0, 2 ou mais resultados e uma exceção será gerada
-        dados = session.query(FuncionarioDB).filter(FuncionarioDB.cpf == corpo.cpf).filter(FuncionarioDB.senha == corpo.senha).one()
-        return dados, 200
+
+        funcionario = session.query(FuncionarioDB).filter(FuncionarioDB.cpf == corpo.cpf).first()
+        if not funcionario:
+            return {"erro": "Funcionário não encontrado"}, 404
+
+        if not verify_password(corpo.senha, funcionario.senha):
+            return {"erro": "Senha incorreta"}, 401
+        return {
+            "id_funcionario": funcionario.id,
+            "nome": funcionario.nome,
+            "matricula": funcionario.matricula,
+            "cpf": funcionario.cpf,
+            "telefone": funcionario.telefone,
+            "grupo": funcionario.grupo,
+        }, 200
+
     except Exception as e:
         return {"erro": str(e)}, 400
     finally:
         session.close()
-        
-# verifica se o CPF informado já esta cadastrado, retornado os dados atuais caso já esteja
+
 @router.get("/funcionario/cpf/{cpf}", tags=["Funcionário - Valida CPF"])
 async def cpf_funcionario(cpf: str, current_user: Annotated[User, Depends(get_current_active_user)]):
     try:
         session = db.Session()
-        # busca um com filtro, retornando os dados cadastrados
         dados = session.query(FuncionarioDB).filter(FuncionarioDB.cpf == cpf).all()
         return dados, 200
     except Exception as e:
